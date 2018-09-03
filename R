@@ -1,1 +1,52 @@
-# -
+
+1.	安装文件与软件安装
+Rabbit MQ 是建立在强大的Erlang OTP平台上，因此安装Rabbit MQ的前提是安装Erlang。下载安装3.6.1 版本：
+下载并安装 Eralng OTP For Windows (v18.0)
+运行安装 Rabbit MQ Server Windows Installer (v3.6.1)
+说明：1.Erlang与RabbitMQ更高版本的软件安装会有兼容性问题，导致RabbitMQ无法正常使用。 2.需先安装Erlang，再安装RabbitMQ
+
+2.	软件配置
+激活Rabbit MQ's Management Plugin
+使用Rabbit MQ 管理插件，可以更好的可视化方式查看Rabbit MQ 服务器实例的状态，你可以在命令行中使用下面的命令激活：
+C:\Program Files (x86)\RabbitMQ Server\rabbitmq_server-3.2.3\sbin\rabbitmq-plugins enable rabbitmq_management
+要重启服务才能生效，可以执行
+net stop RabbitMQ && net start RabbitMQ
+软件控制台登陆默认用户名、密码均为guest-->http://localhost:15672/#/
+3.	集群建立
+同步cookie
+Rabbitmq的集群是依赖于erlang的集群来工作的，所以必须先构建起erlang的集群环境。Erlang的集群中各节点是通过一个magic cookie来实现的，这个cookie存放在 C:\Windows与C:\Users\Administrator目录下，文件是400的权限。所以必须保证各节点cookie保持一致，否则节点之间就无法通信。将其中一台节点上的.erlang.cookie值复制下来保存到其他节点上。
+设置节点间可以互相访问（关闭防防火墙）
+编辑C:\Windows\System32\drivers\etc目录下hosts文件，增加集群中所有节点的IP地址及计算机名，如下所示。集群有四个节点，其他三个节点的IP地址与计算机名如下。
+说明：需在每个节点的hosts文件中都加入其他节点的IP地址与计算机名，保证所有节点之间可以互相访问。
+172.16.50.85		JY-PC
+	172.16.50.245		TartarusWang-PC
+	172.16.50.83		EM-PC
+建立集群
+====================================================================== rabbitmqctl join_cluster rabbit@G--》把G中的rabbitmq加入到集群中来（磁盘结点）
+rabbitmqctl join_cluster --ram rabbit@G  --》把G中的rabbitmq加入到集群中来（如果要使用内存节点，可以用这个命令来配置）
+rabbitmqctl cluster_status --》查看集群状态
+rabbitmqctl stop_app--》停止当前机器中rabbitmq的服务
+Rabbitmq错误排查：
+先查看集群状态，若果无法连接到结点，通过.erlang.cookie在C:\Users\xxx中的路径判断是用的那个环境变量，是系统环境变量还是admin环境变量，需要设置环境变量ERLANG_HOME，设置好之后在services.msc中手动启动rabbitmq service,之后测试一下rabbitmqctl cluster_status查看一下集群状态，如果还报相同的错，rabbitmqctl stop_app，rabbitmqctl start_app
+========================================================================
+compute02 # rabbitmqctl stop_app
+compute02 # rabbitmqctl join_cluster rabbit@compute01
+compute02 # rabbitmqctl start_app
+若角色为内存节点，则
+compute02 # rabbitmqctl join_cluster --ram rabbit@compute01
+集群配置好后，可以在 RabbitMQ 任意节点上执行 rabbitmqctl cluster_status 来查看是否集群配置成功。
+compute01 # rabbitmqctl cluster_status
+Cluster status of node rabbit@compute01 ...
+[{nodes,[{disc,[rabbit@compute01,rabbit@compute02]}]},
+ {running_nodes,[rabbit@compute02,rabbit@compute01]},
+ {cluster_name,<<"rabbit@compute01.sinasce.com">>},
+ {partitions,[]}]
+...done.
+退出集群
+compute02 # rabbitmqctl stop_app
+compute02 # rabbitmqctl reset
+compute02 # rabbitmqctl start_app
+集群建立完成后，可以在console页面查看当前集群状态，如下图所示：
+ 
+通过控制台界面，可以查看当前所有节点状态以及各节点上的exchang、queue的信息。
+
