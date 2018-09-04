@@ -1,0 +1,105 @@
+
+AMQP 协议中的核心思想就是：生产者和消费者隔离，生产者从不直接将消息发送给队列。
+1)生产者通常不知道是否一个消息会被发送到队列中，只是将消息发送到一个交换机。
+2)先由 Exchange 来接收，然后 Exchange 按照特定的策略转发到 Queue 进行存储。
+同理，消费者也是如此。Exchange 就类似于一个交换机，转发各个消息分发到相应的队列中。
+
+1.交换机分为4中：fanout，direct，topic，header. 
+
+headers这种类型的exchange绑定的时候会忽略掉routingkey
+Headers是一个键值对，可以定义成成字典等。发送者在发送的时候定义一些键值对，接收者也可以再绑定时候传入一些键值对，两者匹配的话，则对应的队列就可以收到消息。
+匹配有两种方式all和any。这两种方式是在接收端必须要用键值"x-mactch"来定义。
+all代表定义的多个键值对都要满足，而any则代码只要满足一个就可以了。
+之前的几种exchange的routingKey都需要要字符串形式的
+
+举个例子，发送端定义2个键值{k1,1}，{k2,2},接收端绑定队列的时候定义{"x-match", "any"}，那么接收端的键值属性里只要存在{k1,1}或{k2,2}都可以获取到消息。
+Durability
+
+　　持久性，这是exchange的可选属性，如果你Durability设置为false，那些当前会话结束的时候，该exchange也会被销毁。　
+　　新建一个transient exchange　
+　　关闭当前连接再查看一下
+　　刚才我们新建的transient已经销毁了。
+Auto delete
+   当没有队列或者其他exchange绑定到此exchange的时候，该exchange被销毁。这个很简单就不示例了。
+   Internal （比较简单 也不展示了）
+   表示这个exchange不可以被client用来推送消息，仅用来进行exchange和exchange之间的绑定。
+   PS: 无法声明2个名称相同 但是类型却不同的exchange
+2.Message
+1）消息的持久在代码中设置的方法与exchange和queue不同，有2种方法
+//1
+IBasicProperties properties = channel.CreateBasicProperties();
+properties.SetPersistent(true);
+//properties.Persistent = true;
+byte[] payload = Encoding.ASCII.GetBytes(message);
+channel.BasicPublish(exchange.name, txtMessageRoutingKey.Text.Trim(), properties, payload);
+//2
+IBasicProperties properties = channel.CreateBasicProperties();
+properties.DeliveryMode = 2;
+byte[] payload = Encoding.ASCII.GetBytes(message);
+channel.BasicPublish(exchange.name, txtMessageRoutingKey.Text.Trim(), properties, payload);
+***然后设置deliveryMode为2，即Persistent模式。
+2)contentType: 标识消息内容的MIME，例如JSON用application/json
+　　replayTo： 标识回调的queue的地址
+　　correlationId：用于request和response的关联，确保消息的请求和响应的同一性
+　　Message的2种状态：
+　　Ready
+　　此状态的消息存在于队列中待处理。
+　　Unacknowledged
+    此状态的消息表示已经在处理未确认。
+
+　　说到Unacknowledged，这里需要了解一个ack的概念。当Consumer接收到消息、处理任务完成之后，
+    会发送带有这个消息标示符的ack，来告诉server这个消息接收到并处理完成。RabbitMQ会一直等到处理某个消息的Consumer的链接失去之后，
+    才确定这个消息没有正确处理，从而RabbitMQ重发这个消息。Message acknowledgment是默认关闭的。初始化Consumer时有个noAck参数，
+    如果设置为true，这个Consumer在收到消息之后会马上返回ack。
+
+　　string BasicConsume(string queue, bool noAck, RabbitMQ.Client.IBasicConsumer consumer)
+
+　　一般来说，常用的场景noack一般就是设置成true，但是对于风险要求比较高的项目，例如支付。
+    对于每一条消息我们都需要保证他的完整性和正确性。就需要获取消息后确认执行完正确的业务逻辑后再主动返回一个ack给server。
+    可以通过rabbitmqctl list_queues name message_rady message_unacknowleded 命令来查看队列中的消息情况，也可以通过后台管理界面。
+ 3.Binding
+   如果你绑定了一个durable的队列和一个durable的交换机，RabbitMQ会自动保留这个绑定。
+   类似的，如果删除了某个队列或交换机（无论是不是 durable），依赖它的绑定都会自动删除。
+   在声明一个队列的同时，server会默认让此队列绑定在默认的exchange上，这个exchange的名称为空。
+ 4.交换机
+ 1）交换机类型（exchange type）
+   RabbitMQ消息模型的核心理念是：发布者（producer）不会直接发送任何消息给队列。事实上，发布者（producer）甚至不知道消息是否已经被投递到队列。
+   发布者（producer）只需要把消息发送给一个exchange。exchange非常简单，它一边从发布者方接收消息，一边把消息推入队列。
+   exchange必须知道如何处理它接收到的消息，是应该推送到指定的队列还是是多个队列，或者是直接忽略消息。这些规则是通过exchange type来定义的。
+   
+   --https://www.cnblogs.com/dubing/p/4017613.html
+  2）exchange常用有三种类型：
+    Direct ：处理路由键。需要将一个队列绑定到交换机上，要求该消息与一个特定的路由键完全匹配。这是一个完整的匹配。
+             如果一个队列绑定到该交换机上要求路由键 “dog”，则只有被标记为“dog”的消息才被转发，
+             不会转发dog.puppy，也不会转发dog.guard，只会转发dog。 
+　　Fanout ：不处理路由键。你只需要简单的将队列绑定到交换机上。一个发送到交换机的消息都会被转发到与该交换机绑定的所有队列上。
+            你只需要简单的将队列绑定到交换机上。一个发送到交换机的消息都会被转发到与该交换机绑定的所有队列上。Fanout交换机转发消息是最快的
+　　Topic : 将路由键和某模式进行匹配。此时队列需要绑定要一个模式上。符号“#”匹配一个或多个词，符号“*”匹配不多不少一个词。
+            符号“#”匹配一个或多个词，符号“*”匹配不多不少一个词。
+            因此“audit.#”能够匹配到“audit.irs.corporate”，但是“audit.*” 只会匹配到“audit.irs”
+5.发布消息（生产者）
+//创建连接
+ IAdvancedBus advancedBus = RabbitHutch.CreateBus(logConfigInfo.RabbitMQConnectionString).Advanced;
+ //获取交换机类型
+ string type = logConfigInfo.RabbitMQExchangeType
+ //声明交换机
+ IExchange log_exchange = advancedBus.ExchangeDeclare(logConfigInfo.RabbitMQExchange, type, false, true);
+ //设置消息的持久性
+  message.Properties.DeliveryMode = 2;
+  //发布消息
+  advancedBus.PublishAsync(log_exchange, routekey, false, message);
+  
+ 6.订阅消息（消费者）
+ //创建连接
+ IAdvancedBus advancedBus = RabbitHutch.CreateBus(logConfigInfo.RabbitMQConnectionString).Advanced;
+ //获取交换机类型
+ string type = logConfigInfo.RabbitMQExchangeType
+ //声明交换机
+ IExchange log_exchange = advancedBus.ExchangeDeclare(logConfigInfo.RabbitMQExchange, type, false, true);
+ //申明队列
+ var info_queue = advancedBus.QueueDeclare(queueName, false, true);
+ //用路由绑定交换机和队列
+ advancedBus.Bind(log_exchange, info_queue, routekey);
+ //从队列中获取原始字节，并且释放消费者的一次性消费
+ advancedBus.Consume(info_queue, onMessage)
+ 
