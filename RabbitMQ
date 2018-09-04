@@ -1,4 +1,4 @@
-
+定义：RabbitMQ是一个在AMQP基础上完成的，可复用的企业消息系统。
 1.	安装文件与软件安装
 Rabbit MQ 是建立在强大的Erlang OTP平台上，因此安装Rabbit MQ的前提是安装Erlang。下载安装3.6.1 版本：
 下载并安装 Eralng OTP For Windows (v18.0)
