@@ -1,1 +1,4 @@
-
+agenct.config
+   agent.application_code=DemoApplication --项目名
+   Collector cluster：SERVERS="192.168.60.128:9300,172.16.50.88:9300"
+   collector.servers=127.0.0.1:10800
