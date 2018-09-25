@@ -2,6 +2,10 @@ agenct.config
    agent.application_code=DemoApplication --项目名
    Collector cluster：SERVERS="192.168.60.128:9300,172.16.50.88:9300"
    collector.servers=127.0.0.1:10800
-https://www.jianshu.com/p/3ddd986c7581 --部署skywalking
+
 启动window iis配置  --https://jingyan.baidu.com/article/2a138328ae4b85074b134f55.html
 部署asp.net web发布的程序---https://www.cnblogs.com/lookerblue/p/7101641.html
+
+SKYWALKING 架构设计     https://blog.csdn.net/sD7O95O/article/details/80906314
+Skywalking  配置部署    https://www.jianshu.com/p/3ddd986c7581
+
