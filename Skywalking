@@ -10,3 +10,431 @@ SKYWALKING 架构设计     https://blog.csdn.net/sD7O95O/article/details/809063
 Skywalking  配置部署    https://www.jianshu.com/p/3ddd986c7581
 Skywalking 中支持集群，mysql    https://my.oschina.net/u/437309/blog/1920725
 讲解 https://www.meiwen.com.cn/subject/wrsvwftx.html
+
+1.asp.net core +ef + mysql 
+1）startup.cs
+ public class Startup
+    {
+        public Startup(IConfiguration configuration)
+        {
+            Configuration = configuration;
+        }
+
+        public IConfiguration Configuration { get; }
+
+        // This method gets called by the runtime. Use this method to add services to the container.
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddApplicationInsightsTelemetry(Configuration);
+
+            services.AddMvc();
+            services.AddEntityFrameworkMySql()
+                .AddDbContext<ApplicationDbContext>(options =>
+            options.UseMySql(Configuration.GetConnectionString("DefaultConnection")));
+
+            services.AddSkyWalking(option =>
+            {
+                //这里填本应用的名称，每个应用不同
+                option.ApplicationCode = "PrecticeProject2";
+                //这里填Collector的地址
+                option.DirectServers = "172.16.50.88:11800";
+            })
+            .AddEntityFrameworkCore(c => { c.AddPomeloMysql(); })
+            .AddHttpClient();
+        }
+
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        {
+            if (env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+                app.UseBrowserLink();
+            }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+            }
+
+            app.UseStaticFiles();
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute(
+                    name: "default",
+                    template: "{controller}/{action}/{id?}");
+            });
+            
+        }
+    }
+    2)appsetting.json
+    {
+  "ConnectionStrings": {
+    "DefaultConnection": "server = localhost; port = 3306; uid = root; pwd =root; database = aspnetmysql" //手动高亮",
+  },
+
+  "Logging": {
+    "IncludeScopes": false,
+    "LogLevel": {
+      "Default": "Warning"
+    }
+  }
+  
+}
+3)MysqlConnectionDao.cs
+public class MysqlConnectionDao
+    {
+        private ApplicationDbContext _context { get; set; }
+        public List<MessageModel> GetMessage(string messagetype)
+        {
+            List<MessageModel> mlist = new List<MessageModel>();
+            var optionsBuilder1 = new DbContextOptionsBuilder<ApplicationDbContext>();
+            optionsBuilder1.UseMySql("server = localhost; port = 3306; uid = root; pwd = root; database = aspnetmysql");
+            using (var context = new ApplicationDbContext(optionsBuilder1.Options))
+            {
+                mlist = context.MessageModel.Where(c => (c.MessageType == messagetype)).ToList();
+            }
+            return mlist;
+        }
+    }
+  4)ApplicationDbContext.cs
+  public class ApplicationDbContext: DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+        public DbSet<MessageModel> MessageModel { set; get; }
+
+    }
+  5)MessageModel.cs
+   public class MessageModel
+    {
+        [Key]
+        public string MessageType { get; set; }
+        public string Message { get; set; }
+    }
+   6)LoginController.cs
+  [Route("API/[controller]")]
+    public class LoginController : Controller
+    {
+       [Route("LoginPage")]
+       [HttpGet("{id}")]
+        public IActionResult Login(string id)
+        {
+            return View();
+        }
+
+        [Route("LoginSuccess")]
+        [HttpPost]
+        public IActionResult LoginSuccess()
+        {
+            return RedirectToAction("LoginSuccessful");
+        }
+
+        [Route("LoginSuccessful")]
+        [HttpGet]
+        public IActionResult LoginSuccessful()
+        {
+           MysqlConnectionDao dao = new MysqlConnectionDao();
+           List <MessageModel> messageList = dao.GetMessage("Loginpage");
+           ViewData["message"] = messageList[0].Message;
+           return View();
+        }
+    }
+   2.skywalking 配置文件
+   1）elasticsearch.yml
+   # ======================== Elasticsearch Configuration =========================
+#
+# NOTE: Elasticsearch comes with reasonable defaults for most settings.
+#       Before you set out to tweak and tune the configuration, make sure you
+#       understand what are you trying to accomplish and the consequences.
+#
+# The primary way of configuring a node is via this file. This template lists
+# the most important settings you may want to configure for a production cluster.
+#
+# Please consult the documentation for further information on configuration options:
+# https://www.elastic.co/guide/en/elasticsearch/reference/index.html
+#
+# ---------------------------------- Cluster -----------------------------------
+#
+# Use a descriptive name for your cluster:
+#
+cluster.name: CollectorDBCluster
+#
+# ------------------------------------ Node ------------------------------------
+#
+# Use a descriptive name for the node:
+#
+node.name: masterNode
+#
+# Add custom attributes to the node:
+#
+#node.attr.rack: r1
+#
+# ----------------------------------- Paths ------------------------------------
+#
+# Path to directory where to store the data (separate multiple locations by comma):
+#
+#path.data: /path/to/data
+#
+# Path to log files:
+#
+#path.logs: /path/to/logs
+#
+# ----------------------------------- Memory -----------------------------------
+#
+# Lock the memory on startup:
+#
+#bootstrap.memory_lock: true
+#
+# Make sure that the heap size is set to about half the memory available
+# on the system and that the owneof the process is allowed to use this
+# limit.
+#
+# Elasticsearch performs poorly when the system is swapping the memory.
+#
+# ---------------------------------- Network -----------------------------------
+#
+# Set the bind address to a specific IP (IPv4 or IPv6):
+#
+#ES监听的ip地址
+network.host: 172.16.50.88
+thread_pool.bulk.queue_size: 1000
+http.cors.enabled: true 
+http.cors.allow-origin: "*" 
+#
+# Set a custom port for HTTP:
+#
+#http.port: 9200
+#
+# For more information, consult the network module documentation.
+#
+# --------------------------------- Discovery ----------------------------------
+#
+# Pass an initial list of hosts to perform discovery when new node is started:
+# The default list of hosts is ["127.0.0.1", "[::1]"]
+#
+discovery.zen.ping.unicast.hosts: ["172.16.50.88:9300"]
+#discovery.zen.ping.multicast.enabled: true
+#
+# Prevent the "split brain" by configuring the majority of nodes (total number of master-eligible nodes / 2 + 1):
+#
+#discovery.zen.minimum_master_nodes: 3
+#
+# For more information, consult the zen discovery module documentation.
+#
+# ---------------------------------- Gateway -----------------------------------
+#
+# Block initial recovery after a full cluster restart until N nodes are started:
+#
+#gateway.recover_after_nodes: 3
+#
+# For more information, consult the gateway module documentation.
+#
+# ---------------------------------- Various -----------------------------------
+#
+# Require explicit names when deleting indices:
+#
+#action.destructive_requires_name: true
+
+
+
+2）application.yml
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#cluster:
+#  zookeeper:
+#    hostPort: localhost:2181
+#    sessionTimeout: 100000
+naming:
+  jetty:
+    host: 172.16.50.88
+    port: 10800
+    contextPath: /
+cache:
+#  guava:
+  caffeine:
+remote:
+  gRPC:
+    host: 172.16.50.88
+    port: 11800
+agent_gRPC:
+  gRPC:
+    host: 172.16.50.88
+    port: 11800
+    #Set these two setting to open ssl
+    #sslCertChainFile: $path
+    #sslPrivateKeyFile: $path
+
+    #Set your own token to active auth
+    #authentication: xxxxxx
+agent_jetty:
+  jetty:
+    host: 172.16.50.88
+    port: 12800
+    contextPath: /
+analysis_register:
+  default:
+analysis_jvm:
+  default:
+analysis_segment_parser:
+  default:
+    bufferFilePath: ../buffer/
+    bufferOffsetMaxFileSize: 10M
+    bufferSegmentMaxFileSize: 500M
+    bufferFileCleanWhenRestart: true
+ui:
+  jetty:
+    host: 172.16.50.88
+    port: 12800
+    contextPath: /
+storage:
+  elasticsearch:
+    clusterName: CollectorDBCluster 
+    clusterTransportSniffer: true
+    clusterNodes: 172.16.50.88:9300
+    indexShardsNumber: 2
+    indexReplicasNumber: 0
+    highPerformanceMode: true
+    ttl: 7
+#storage:
+#  h2:
+#    url: jdbc:h2:~/memorydb
+#    userName: sa
+configuration:
+  default:
+#     namespace: xxxxx
+# alarm threshold
+    applicationApdexThreshold: 2000
+    serviceErrorRateThreshold: 10.00
+    serviceAverageResponseTimeThreshold: 2000
+    instanceErrorRateThreshold: 10.00
+    instanceAverageResponseTimeThreshold: 2000
+    applicationErrorRateThreshold: 10.00
+    applicationAverageResponseTimeThreshold: 2000
+# thermodynamic
+    thermodynamicResponseTimeStep: 50
+    thermodynamicCountOfResponseTimeSteps: 40
+    
+    
+3）agent.config
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# The agent namespace
+# agent.namespace=default-namespace
+
+# The application name in UI
+agent.application_code=PrecticeProject
+
+# The number of sampled traces per 3 seconds
+# Negative number means sample traces as many as possible, most likely 100%
+# agent.sample_n_per_3_secs=-1
+
+# Authentication active is based on backend setting, see application.yml for more details.
+# agent.authentication = xxxx
+
+# The max amount of spans in a single segment.
+# Through this config item, skywalking keep your application memory cost estimated.
+# agent.span_limit_per_segment=300
+
+# Ignore the segments if their operation names start with these suffix.
+# agent.ignore_suffix=.jpg,.jpeg,.js,.css,.png,.bmp,.gif,.ico,.mp3,.mp4,.html,.svg
+
+# If true, skywalking agent will save all instrumented classes files in `/debugging` folder.
+# Skywalking team may ask for these files in order to resolve compatible problem.
+# agent.is_open_debugging_class = true
+
+# Server addresses.
+# Primary address setting.
+#
+# Mapping to `naming/jetty/ip:port` in `config/application.yml` of Collector.
+# Examples：
+# Single collector：SERVERS="localhost:10800"
+# Collector cluster：SERVERS="10.2.45.126:8080,10.2.45.127:7600"
+collector.servers=172.16.50.88:10800
+
+# Collector agent_gRPC/grpc service addresses.
+# Secondary address setting, only effect when "collector.servers" is empty.
+# By using this, no discovery mechanism provided. The agent only uses these addresses to uplink data.
+# Recommend to use this only when collector cluster IPs are unreachable from agent side. Such as:
+#   1. Agent and collector cluster are in different VPC in Cloud.
+#   2. Agent uplinks data to collector cluster through Internet.
+# collector.direct_servers=www.skywalking.service.io
+
+# Logging level
+logging.level=DEBUG
+
+
+
+4)webappService.bat
+@REM
+@REM  Licensed to the Apache Software Foundation (ASF) under one or more
+@REM  contributor license agreements.  See the NOTICE file distributed with
+@REM  this work for additional information regarding copyright ownership.
+@REM  The ASF licenses this file to You under the Apache License, Version 2.0
+@REM  (the "License"); you may not use this file except in compliance with
+@REM  the License.  You may obtain a copy of the License at
+@REM
+@REM      http://www.apache.org/licenses/LICENSE-2.0
+@REM
+@REM  Unless required by applicable law or agreed to in writing, software
+@REM  distributed under the License is distributed on an "AS IS" BASIS,
+@REM  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@REM  See the License for the specific language governing permissions and
+@REM  limitations under the License.
+
+@echo off
+
+setlocal
+set WEBAPP_PROCESS_TITLE=Skywalking-Webapp
+set WEBAPP_HOME=%~dp0%..
+set JARPATH=%WEBAPP_HOME%\webapp
+set WEBAPP_LOG_DIR=%WEBAPP_HOME%\logs
+
+if exist "%WEBAPP_LOG_DIR%" (
+    mkdir "%WEBAPP_LOG_DIR%"
+)
+
+set LOG_FILE_LOCATION=%WEBAPP_LOG_DIR%\webapp.log
+
+if defined JAVA_HOME (
+ set _EXECJAVA="%JAVA_HOME%\bin\java"
+)
+
+if not defined JAVA_HOME (
+ echo "JAVA_HOME not set."
+ set _EXECJAVA=java
+)
+
+start "%WEBAPP_PROCESS_TITLE%" %_EXECJAVA%  -jar %JARPATH%/skywalking-webapp.jar --server.port=8080 --collector.ribbon.listOfServers=172.16.50.88:10800 --logging.file=%LOG_FILE_LOCATION% --collector.ribbon.ReadTimeout=10000
+
+endlocal
+
