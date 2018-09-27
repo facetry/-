@@ -438,3 +438,9 @@ start "%WEBAPP_PROCESS_TITLE%" %_EXECJAVA%  -jar %JARPATH%/skywalking-webapp.jar
 
 endlocal
 
+3.NUGET包：
+Microsoft.AspNetCore.All
+SkyWalking.AspNetCore
+SkyWalking.Diagnostics.EntityFrameworkCore
+SkyWalking.Diagnostics.EntityFrameworkCore.Pomelo.MySql
+SkyWalking.Diagnostics.HttpClient
