@@ -199,7 +199,7 @@ node.name: masterNode
 # Set the bind address to a specific IP (IPv4 or IPv6):
 #
 #ES监听的ip地址
-network.host: 172.16.50.88
+network.host: ip1
 thread_pool.bulk.queue_size: 1000
 http.cors.enabled: true 
 http.cors.allow-origin: "*" 
