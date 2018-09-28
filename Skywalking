@@ -10,6 +10,7 @@ SKYWALKING 架构设计     https://blog.csdn.net/sD7O95O/article/details/809063
 Skywalking  配置部署    https://www.jianshu.com/p/3ddd986c7581
 Skywalking 中支持集群，mysql    https://my.oschina.net/u/437309/blog/1920725
 讲解 https://www.meiwen.com.cn/subject/wrsvwftx.html
+skywalking 快速入门：https://github.com/apache/incubator-skywalking/blob/5.x/docs/cn/Quick-start-CN.md
 
 ip1是mysql和项目服务的地址
 1.asp.net core +ef + mysql 
