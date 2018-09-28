@@ -5,7 +5,7 @@ agenct.config
 
 启动window iis配置  --https://jingyan.baidu.com/article/2a138328ae4b85074b134f55.html
 部署asp.net web发布的程序---https://www.cnblogs.com/lookerblue/p/7101641.html
-
+                          iis部署asp.net core程序需要安装AspNetCoreModule（IIS的模块中发现AspNetCoreModule托管模块）
 SKYWALKING 架构设计     https://blog.csdn.net/sD7O95O/article/details/80906314
 Skywalking  配置部署    https://www.jianshu.com/p/3ddd986c7581
 Skywalking 中支持集群，mysql    https://my.oschina.net/u/437309/blog/1920725
