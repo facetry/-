@@ -5,6 +5,42 @@ AMQP 协议中的核心思想就是：生产者和消费者隔离，生产者从
 同理，消费者也是如此。Exchange 就类似于一个交换机，转发各个消息分发到相应的队列中。
 
 1.交换机分为4中：fanout，direct，topic，header. 
+RabbitMq:异步消息处理
+1）.生产者
+
+2）. route key: 生产者在将消息发送给Exchange的时候，一般会指定一个routing key，                
+                     来指定这个消息的路由规则，生产者就可以在发送消息给Exchange时，
+                      通过指定routing key来决定消息流向哪里。
+
+3）.交换机(Exchange)
+                     3.1交换机类型：
+                             fanout:把所有发送到该Exchange的消息投递到所有与它绑定的队列中。
+                            direct:把消息投递到那些binding key与routing key完全匹配的队列中。
+                            topic:将消息路由到binding key与routing key模式匹配的队列中。
+                            headers：headers类型的Exchange不依赖于routing key与binding key的
+                                             匹配规则来路由消息，而是根据发送的消息内容中的headers
+                                             属性进行匹配。在绑定Queue与Exchange时指定一组键值对；
+                                             当消息发送到Exchange时，RabbitMQ会取到该消息的headers
+                                           （也是一个键值对的形式），对比其中的键值对是否完全匹配
+                                            Queue与Exchange绑定时指定的键值对；如果完全匹配则消息
+                                           会路由到该Queue，否则不会路由到该Queue。该类型的Exchange
+                                            没有用到过（不过也应该很有用武之地），所以不做介绍
+
+4）. binding key: 在绑定（Binding）Exchange与Queue的同时，一般会指定一个
+                         binding key。在绑定多个Queue到同一个Exchange的时候，这些 
+                         Binding允许使用相同的binding key。
+5）.队列(queue)：可以由生产者或者消费者创建
+
+6）.消费者
+
+
+7）. RabbitMQ的消息确认机制：
+默认情况下，如果消息已经被某个消费者正确的接收到了，那么该消息就会被从队列中移除。当然也可以让同一个消息发送到很多的消费者。
+      如果一个队列没有消费者，那么，如果这个队列有数据到达，那么这个数据会被缓存，不会被丢弃。当有消费者时，这个数据会被立即发送到这个消费者，这个数据被消费者正确收到时，这个数据就被从队列中删除。
+     那么什么是正确收到呢？通过ack。每个消息都要被acknowledged（确认，ack）。我们可以显示的在程序中去ack，也可以自动的ack。如果有数据没有被ack，那么：
+     RabbitMQ Server会把这个信息发送到下一个消费者。
+     如果这个app有bug，忘记了ack，那么RabbitMQServer不会再发送数据给它，因为Server认为这个消费者处理能力有限。
+    而且ack的机制可以起到限流的作用（Benefitto throttling）：在消费者处理完成数据后发送ack，甚至在额外的延时后发送ack，将有效的均衡消费者的负载
 
 headers这种类型的exchange绑定的时候会忽略掉routingkey
 Headers是一个键值对，可以定义成成字典等。发送者在发送的时候定义一些键值对，接收者也可以再绑定时候传入一些键值对，两者匹配的话，则对应的队列就可以收到消息。
