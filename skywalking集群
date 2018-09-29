@@ -1,0 +1,137 @@
+2.1 Elasticsearch集群部署
+​ 安装参考上面的单机部署，以下仅演示配置及集群部署
+
+#安装ElasticSearch索引数据库，提供数据存储及快速查询
+wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-5.6.10.tar.gz
+
+tar -xf elasticsearch-5.6.10.tar.gz
+mv elasticsearch-5.6.10 elasticsearch
+
+#创建Skywalking数据及日志存储目录
+cd elasticsearch/
+mkdir data
+mkdir log
+
+cd config/
+
+#配置ElasticSearch单机节点信息，date、logs目录使用绝对路径
+cat >> elasticsearch.yml << EOF
+cluster.name: CollectorDBCluster
+node.name: node-1
+path.data: /home/mon/apps/elasticsearch/data
+path.logs: /home/mon/apps/elasticsearch/logs
+network.host: 0.0.0.0
+thread_pool.bulk.queue_size: 1000
+http.port: 9200 
+discovery.zen.ping.unicast.hosts: ["10.20.30.123:9300", "10.20.30.124:9300","10.20.30.125:9300"]
+discovery.zen.minimum_master_nodes: 2
+EOF
+
+#同步ElasticSearch到同集群其他机器
+scp -r ./elasticsearch mon@10.20.30.124:/home/mon/apps
+scp -r ./elasticsearch mon@10.20.30.125:/home/mon/apps
+
+#开启防火墙端口
+firewall-cmd --zone=public --add-port=9200/tcp --permanent
+firewall-cmd --zone=public --add-port=9300/tcp --permanent
+firewall-cmd --reload
+
+2.2 Zookeeper集群部署
+#安装zookeeper注册发现中心
+wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.10/zookeeper-3.4.10.tar.gz
+
+tar -xf zookeeper-3.4.10.tar.gz
+mv zookeeper-3.4.10 zookeeper
+cd zookeeper/conf/
+
+#写入Zookeeper集群配置文件，data目录使用绝对路径
+cat > zoo.cfg <<EOF 
+tickTime=2000 
+initLimit=10 
+syncLimit=5 
+dataDir=/home/mon/apps/zookeeper/data 
+clientPort=2181 
+server.1=10.20.30.123:2888:3888 
+server.2=10.20.30.124:2888:3888 
+server.3=10.20.30.125:2888:3888
+EOF
+
+#创建一个tmp文件夹，存放myid
+mkdir /home/mon/apps/zookeeper/tmp
+echo 1 > /home/mon/apps/zookeeper/tmp/myid
+
+#分发安装包
+#将配置好的zookeeper拷贝到其他节点
+scp -r ./zookeeper mon@10.20.30.124:/home/mon/apps
+scp -r ./zookeeper mon@10.20.30.125:/home/mon/apps
+    #注意：修改另外两台服务器对应/home/mon/apps/zookeeper/tmp/myid内容
+#server.2
+echo 2 > /home/mon/apps/zookeeper/tmp/myid
+#server.3
+echo 2 > /home/mon/apps/zookeeper/tmp/myid
+
+#开放防火墙端口
+firewall-cmd --zone=public --add-port=2181/tcp --permanent
+firewall-cmd --zone=public --add-port=2888/tcp --permanent
+firewall-cmd --zone=public --add-port=3888/tcp --permanent
+firewall-cmd --reload
+
+#启动集群，按server.1、server.2、server.3的顺序分别启动Zookeeper服务
+cd /home/mon/apps/zookeeper/bin
+./zkServer.sh start
+
+#停止集群，分别停止Zookeeper服务
+./zkServer.sh stop
+
+#查询Zookeeper节点状态
+./zkServer.sh status
+2.3 SkyWalking集群部署
+#包括Collector收集器，Agent探针，WebUI响应界面
+wget http://www-eu.apache.org/dist/incubator/skywalking/5.0.0-beta2/apache-skywalking-apm-incubating-5.0.0-beta2.tar.gz
+
+tar -xf apache-skywalking-apm-incubating-5.0.0-beta2.tar.gz
+
+mv apache-skywalking-apm-incubating skywalking
+
+#配置Zookeeper、ElasticSearch集群
+cd skywalking/config
+find . -name 'application.yml' |grep admin |xargs sed -i 's/#cluster:/cluster:/g'
+find . -name 'application.yml' |grep admin |xargs sed -i 's/#  zookeeper:/  zookeeper:/g'
+find . -name 'application.yml' |grep admin |xargs sed -i 's/#    hostPort: localhost:2181/    hostPort: 10.20.30.123:2181,10.20.30.124:2181,10.20.30.125:2181/g'
+find . -name 'application.yml' |grep admin |xargs sed -i 's/#    sessionTimeout: 100000/    sessionTimeout: 100000/g'
+find . -name 'application.yml' |grep admin |xargs sed -i 's/    host: localhost/    host: 0.0.0.0/g'
+find . -name 'application.yml' |grep admin |xargs sed -i 's/    clusterNodes: localhost:9300/    clusterNodes: 10.20.30.123:9300,10.20.30.124:9300,10.20.30.125:9300/g'
+
+#配置WebUI访问Collector集群
+cd ../webapp
+find . -name 'webapp.yml' |grep admin |xargs sed -i 's/    listOfServers: 127.0.0.1:10800/    listOfServers: 10.20.30.123:10800,10.20.30.124:10800,10.20.30.125:10800/g'
+
+#配置WebUI端口号，可使用默认8080，以下仅做示例，根据实际需求修改
+find . -name 'application.yml' |grep admin |xargs sed -i 's/  port: 8080/  port: 8081/g'
+
+#开放防火墙端口
+#8080为WebUI组件使用的端口号，可在webapp.yml中修改
+firewall-cmd --zone=public --add-port=8080/tcp --permanent
+firewall-cmd --zone=public --add-port=10800/tcp --permanent
+firewall-cmd --zone=public --add-port=11800/tcp --permanent
+firewall-cmd --zone=public --add-port=12800/tcp --permanent
+firewall-cmd --reload
+
+#启动Collector、WebUI，在集群机器上分别启动
+cd ../bin
+./startup.sh
+
+#也可分别启动Collector和WebUI
+./collectorService.sh
+./webappService.sh
+
+2.4 Agent探针集群部署
+#配置SkyWalking集群
+cd ../agent/config
+find . -name 'application.yml' |grep admin |xargs sed -i 's/# collector.direct_servers=www.skywalking.service.io/collector.direct_servers=10.20.30.123:11800,10.20.30.124:11800,10.20.30.125:11800/g'
+
+#分发Agent探针，在部署SkyWalking的机器上
+cd skywalking
+scp -r agent mon@10.20.30.126:/home/mon/apps/
+
+#探针启动方式参考上面单机模式部署
