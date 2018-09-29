@@ -50,3 +50,13 @@ compute02 # rabbitmqctl start_app
  
 通过控制台界面，可以查看当前所有节点状态以及各节点上的exchang、queue的信息。
 
+rabbitmqctl cluster_status --》查看集群状态
+rabbitmqctl stop_app--》停止当前机器中rabbitmq的服务
+
+rabbitmqctl join_cluster rabbit@G--》把G中的rabbitmq加入到集群中来（磁盘结点）
+rabbitmqctl join_cluster --ram rabbit@G  --》把G中的rabbitmq加入到集群中来（如果要使用内存节点，可以用这个命令来配置）
+
+rabbitmqctl start_app--》开启当前机器的rabbitmq服务
+
+rabbitmqctl reset ---》从管理数据库中移除所有数据，例如配置过的用户和虚拟宿主, 删除所有持久化的消息（这个命令要在rabbitmqctl stop_app之后使用）
+C:\Users\baoleiji\AppData\Roaming\RabbitMQ--》log存放地址
