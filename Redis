@@ -82,7 +82,7 @@ redis-cluster投票:容错
 默认关闭,打开集群兼容部分失败.如果集群超过半数以上master挂掉，无论是否有slave，集群进入fail状态
 
 https://blog.csdn.net/truelove12358/article/details/79612954
-
+https://www.cnblogs.com/liyasong/p/redis_jiqun.html?utm_source=itdadao&utm_medium=referral
 
 
 
