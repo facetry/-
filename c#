@@ -1,1 +1,27 @@
+1.使用Json让Java和C#沟通的方法
+  Java端将Java对象转变为Json串后发出，C#端接收到Json串后转换为C#对象；
+  C#发出转变为Json串的对象，Java收到后解析成Java对象，Json串在不同语言之间起到一个桥梁的作用。
+  
+  1.1 Java下使用jackson
+  
+  ObjectMapper是JSON操作的核心，Jackson的所有JSON操作都是在ObjectMapper中实现。 
+  ObjectMapper有多个JSON序列化的方法，可以把JSON字符串保存File、OutputStream等不同的介质中。 
+        ObjectMapper mapper = new ObjectMapper();  
+        //User类转JSON  
+        //输出结果：{"name":"小民","age":20,"birthday":844099200000,"email":"xiaomin@sina.com"}  
+        String json = mapper.writeValueAsString(user);  
+        
+        //ObjectMapper支持从byte[]、File、InputStream、字符串等数据的JSON反序列化。   
+        ObjectMapper mapper = new ObjectMapper();  
+        User user = mapper.readValue(json, User.class);  
+        
+        
+    1.2 C#下使用Newtonsoft.Json
+    JsonParser jp = (JsonParser)JsonConvert.DeserializeObject(result);//result为Json数据
+    List list = jp.data;
+    
+    //user转json
+    var jArray = JsonConvert.DeserializeObject<User>(myStr)
+    string json = JsonConvert.SerializeObject(users, Formatting.Indented);
 
+    
