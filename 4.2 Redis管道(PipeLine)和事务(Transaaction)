@@ -1,1 +1,16 @@
-
+1.Redis管道
+//创建redis客户端
+ protected RedisClient Redis = new RedisClient("10.0.4.227", 6379);
+ //创建管道
+ var Pipeline = Redis.CreatePipeline();
+ //使用管道可以将客户端到Redis的往返次数减少,把一个List<log>全部存储,代码不可以写成下面这样:
+  pipeline.QueueCommand(r => ((RedisClient)r).Store<Log>(n, n.ID, n.GetUrnKey()));
+  
+ //using 语句允许程序员指定使用资源的对象应当何时释放资源。using 语句中使用的对象必须实现 IDisposable 接口。
+ //此接口提供了 Dispose 方法，该方法将释放此对象的资源。
+usig(var Redis = new RedisClient("10.0.4.227", 6379))
+{
+    using(var Pipeline = Redis.CreatePipeline())
+    {
+    }
+}
