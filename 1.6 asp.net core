@@ -1,1 +1,8 @@
   WebHost.UseUrls("http://*:5000")  --指定Server监听的地址
+1.startup
+ 1.1 Configure
+    指定 ASP.NET 应用程序将如何响应每一个 HTTP 请求
+    更复杂的管道配置可以封装于 中间件（middleware） 之中，并通过扩展方法添加到 IApplicationBuilder 上。
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env){....}
+    每个 Use 扩展方法都会把一个 中间件 加入请求管道
+ 1.2
