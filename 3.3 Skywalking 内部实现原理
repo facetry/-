@@ -1,0 +1,19 @@
+skywaking提供了OpenTracing接口实现。OpenTracing通过提供平台无关、厂商无关的API，使得开发人员能够方便的添加（或更换）追踪系统的实现。
+OpenTracing中给trace 做了定义：
+一个trace代表了一个事务或者流程在（分布式）系统中的执行过程。在OpenTracing标准中，trace是多个span组成的一个有向无环图（DAG），每一个span代表 trace中被命名并计时的连续性的执行片段。
+trace 是系统实现的数据结构。简单来说，我们浏览器或者手机中做的每个操作，都可以用一个 trace 数据结构来跟踪。客户端操作涉及的一系列后续后台系统的操作（跨进程、跨线程），每个子操作可以用数据结构 span 来跟踪。所有的 span 通过 trace ID 串联起来，以便以后在系统中通过它来查询调用链路。如果是跨进程操作（http 请求，rpc调用），那trace ID 在底层必须通过网络传递给另外一个进程。
+每个 span 除了记录调用时间外，还提供了两个结构：Tags和 Logs。Tags 存储的是键值对，一般记录的是一些上下文信息，如 http 请求上下文信息（url，端口，http 方法）等。Logs 中可以记录多个日志，每条日志具有时间戳和键值对，如一般的 log4j 日志记录。
+skywalking具有哪些优点？
+skywalking主要使用 java 开发，安装使用方便。
+skywalking系统分为三个组件，web 前端（查询，独立部署），collector（独立部署，trace收集存储），agent（独立部署）。
+web 前端和 collector 都可以直接通过内置在 bin 目录中的脚本直接运行。不像美团点评的 cat 系统那样，要部署 war 包在 tomcat 里面。
+collector 后端存储推荐使用ElasticSearch。ElasticSearch安装方便，使用集群进行存储扩展也方便。类似pinpoint使用的是hbase，cat 使用的是mysql和hdfs，部署和维护都相当麻烦。
+如果trace 数据不想永久存储，skywalking还提供了配置ElasticSearch的数据ttl时间。一旦过了ttl，数据就会自动清除。
+skywalking的agent组件提供了很多插件，支持对dubbo，elastic-job，grpc，jdbc，jedis，mysql，springmvc，sofa-rpc，tomcat进行 Tracing。目前5.0版本多达 39个插件。而这些插件的 Tracing 支持只需要通过 java agent 的形式进行注入，不需要对原来代码进行任何改动。
+当然如果想使用span 中的 Tags 和 Logs 记录更加丰富的业务信息，需要引入skywalking提供的apm-toolkit-opentracing和apm-toolkit-trace包。还提供了 java 注解@Trace，可以很方便将方法调用加入到调用链跟踪中。
+至于trace ID如何跨进程调用, span 上下文如何跨进程传递这类问题，skywalking都帮你处理的。如果你使用的Opentracing API，你还需要显示使用 inject 和 extract 进行处理。
+如spring mvc，Controller 中发生的任何异常会自动上报skywalking，附加到 span 的 Logs 结构中。方便错误分析。
+如果collector发生了异常了，并不会对 agent注入的程序调用产生任何影响。
+所以在日常开发中，我们可放心对业务调用进行埋点。以后可以随时启用skywalking进行调用跟踪和问题诊断。
+除了 trace 和性能诊断，但提供了阈值警告和jvm信息监控等。
+skywalking与美团点评开发的分布式跟踪系统 cat 相比，更加轻量易用，虽然功能上没有 cat 那么强大。但是已经能满足普通场景的大部分需求。cat 没有完善的文档，相当重，一般人使用具有较大风险。
