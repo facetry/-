@@ -15,3 +15,7 @@
 ASP.NET MVC 中的某些功能，需要从 ConfigureServices 中请求某些服务，而这些服务需要在接入请求管道（即config方法）之前先被加入 ConfigureServices 中。
 
 通过 依赖注入（dependency injection） 可将服务加入服务容器
+
+
+2.中间件
+   用于组成应用程序管道来处理请求和响应的组件
