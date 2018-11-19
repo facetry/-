@@ -1,4 +1,6 @@
-  WebHost.UseUrls("http://*:5000")  --指定Server监听的地址
+ http://www.cnblogs.com/dotNETCoreSG/p/aspnetcore-index.html  url
+ 
+ WebHost.UseUrls("http://*:5000")  --指定Server监听的地址
 1.startup
  1.1 Configure（配置管道）
     指定 ASP.NET 应用程序将如何响应每一个 HTTP 请求
