@@ -84,3 +84,35 @@ public void ConfigureLogMiddleware(IApplicationBuilder app,
         await context.Response.WriteAsync("Hello from " + _environment);
     });
 }
+
+3.访问静态文件
+3.1在config文件中配置中间件：app.UseStaticFiles(); 
+3.2访问指定目录下的静态文件：
+ app.UseStaticFiles(new StaticFileOptions()                                     
+    {                                                                             
+        FileProvider = new PhysicalFileProvider(                                   
+            Path.Combine(Directory.GetCurrentDirectory(), @"MyStaticFiles")),     
+        RequestPath = new PathString("/StaticFiles")                              
+    }); 
+ 3.3 访问目录权限
+ app.UseDirectoryBrowser(new DirectoryBrowserOptions()
+    {
+        FileProvider = new PhysicalFileProvider(
+            Path.Combine(Directory.GetCurrentDirectory(), @"wwwroot\images")),
+        RequestPath = new PathString("/MyImages")
+    });
+    public void ConfigureServices(IServiceCollection services)
+{
+    services.AddDirectoryBrowser();
+}
+  3.3静态文件授权
+  3.3.1 将文件保存在 wwwroot 之外并将目录设置为可被静态文件中间件访问到
+  3.3.2 通过一个控制器的 Action 来访问它们，通过授权后返回 FileResult
+3.4设置默认站点首页
+app.UseDefaultFiles();   
+UseDefaultFiles 必须在 UseStaticFiles 之前调用。UseDefaultFiles 只是重写了 URL，而不是真的提供了这样一个文件。你必须开启静态文件中间件（UseStaticFiles）来提供这个文件。
+例子:
+    DefaultFilesOptions options = new DefaultFilesOptions(); 
+    options.DefaultFileNames.Clear(); 
+    options.DefaultFileNames.Add("mydefault.html");
+    app.UseDefaultFiles(options);
