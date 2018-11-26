@@ -22,9 +22,65 @@ ASP.NET MVC 中的某些功能，需要从 ConfigureServices 中请求某些服�
 2.中间件
    用于组成应用程序管道来处理请求和响应的组件
    任何委托都能选择停止传递到下一个委托，转而自己处理该请求。这被叫做请求管道的短路
+   可以使用 Run、Map 和 Use 配置 HTTP 管道，Run 方法将会短路管道（因为它不会调用 next 请求委托）
    2.1 在configure方法中
+   //Run 应该只能在你的管道尾部被调用
      app.Run(async context =>
   {
       await context.Response.WriteAsync("Hello, World!");
   });
-   
+  //Use 构建请求管道
+  app.Use(async (context, next) =>
+    {
+        await context.Response.WriteAsync("Hello from " + _environment);
+    });
+   //Map 扩展方法用于匹配基于请求路径的请求委托。Map 只接受路径，并配置单独的中间件管道的功能
+  app.Map("/maptest", HandleMapTest);
+  2.2 关于log的中间件
+//中间件
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+
+namespace MiddlewareSample
+{
+    public class RequestLoggerMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger _logger;
+
+        public RequestLoggerMiddleware(RequestDelegate next, ILoggerFactory loggerFactory)//手工高亮
+        {
+            _next = next;
+            _logger = loggerFactory.CreateLogger<RequestLoggerMiddleware>();
+        }
+
+        public async Task Invoke(HttpContext context)//手工高亮
+        {
+            _logger.LogInformation("Handling request: " + context.Request.Path);
+            await _next.Invoke(context);
+            _logger.LogInformation("Finished handling request.");
+        }
+    }
+}
+//中间件依赖注入到applicationBuilder中，中间件能够利用到 UseMiddleware 扩展方法的优势，直接通过它们的构造函数注入服务
+public static class RequestLoggerExtensions
+{
+    public static IApplicationBuilder UseRequestLogger(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RequestLoggerMiddleware>();//手工高亮
+    }
+}
+//通过使用扩展方法和相关中间件类，Configure 方法变得非常简洁和高可读性。
+public void ConfigureLogMiddleware(IApplicationBuilder app,
+    ILoggerFactory loggerfactory)
+{
+    loggerfactory.AddConsole(minLevel: LogLevel.Information);
+
+    app.UseRequestLogger();//手工高亮
+
+    app.Run(async context =>
+    {
+        await context.Response.WriteAsync("Hello from " + _environment);
+    });
+}
