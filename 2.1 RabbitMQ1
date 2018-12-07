@@ -29,6 +29,7 @@ RabbitMq:异步消息处理
 4）. binding key: 在绑定（Binding）Exchange与Queue的同时，一般会指定一个
                          binding key。在绑定多个Queue到同一个Exchange的时候，这些 
                          Binding允许使用相同的binding key。
+                         bindingkey=exchange+routingkey
 5）.队列(queue)：可以由生产者或者消费者创建
 
 6）.消费者
