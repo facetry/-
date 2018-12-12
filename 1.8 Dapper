@@ -1,0 +1,33 @@
+.NET的orm框架， 继承自IDBConnection
+属于轻量级的，并且是半自动的。也就是说实体类都要自己写
+Dapper是对IDBConnection接口进行了方法扩展
+//实体类
+var content = new Content
+{
+    title = "标题1",
+    content = "内容1",
+
+};
+//插入一条数据
+using (var conn = new SqlConnection("Data Source=127.0.0.1;User ID=sa;Password=1;Initial Catalog=Czar.Cms;Pooling=true;Max Pool Size=100;"))
+{
+  string sql_insert = @"INSERT INTO [Content]
+  (title, [content], status, add_time, modify_time)
+VALUES   (@title,@content,@status,@add_time,@modify_time)";
+  var result = conn.Execute(sql_insert, content);
+  Console.WriteLine($"test_insert：插入了{result}条数据！");
+}
+
+Dapper的强大之处就在于其关联查询了
+using (var conn = new SqlConnection("Data Source=127.0.0.1;User ID=sa;Password=1;Initial Catalog=Czar.Cms;Pooling=true;Max Pool Size=100;"))
+{
+string sql_insert = @"select * from content where id=@id;
+select * from comment where content_id=@id;";
+using (var result = conn.QueryMultiple(sql_insert, new { id = 5 }))
+{
+    var content = result.ReadFirstOrDefault<ContentWithComment>();
+    content.comments = result.Read<Comment>();
+    Console.WriteLine($"test_select_content_with_comment:内容5的评论数量{content.comments.Count()}");
+}
+
+支持多数据库：oracel,mysql, ....
