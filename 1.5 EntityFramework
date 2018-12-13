@@ -1,1 +1,56 @@
 
+1. 使用entityframeWork连接数据库
+1.1数据库上下文
+public class RetailContext : DbContext
+{
+   public RetailContext(): base("SqliteTest"){}     
+   public DbSet<Thumbnail> Thumbnails { set; get; }
+}
+1.2实体对象
+public class Thumbnail
+{
+    public Int64 Id { get; set; }
+    [Required]
+    [Unique]
+    public string OrginFilePath { get; set; }
+    [Required]
+    public string ThumbnailPath { get; set; }
+    [Required]
+    public DateTime LastUpdateTime { get; set; }
+}
+
+2. 使用OleDbConnection连接读取Excel中的数据(连接Access数据库)
+string connStr="Provider= Microsoft.Jet.OleDB.4.0;Data Source=D:\login.mdb"
+OleDbConnection  objConnection=new  OleDbConnection(strConnect);   
+objConnection.Open();
+ string sql = "select * from coininfo where source='Okcoin'";
+ OleDbCommand aCommand = new OleDbCommand(sql, _oleDbConn);
+ OleDbDataReader dr= aCommand.ExecuteReader();
+while (reader.Read())
+{
+var t1 = reader["字段名"];
+}
+objConnection.close（）
+
+3. 使用sqlconnection读取数据库（sqlserver, mysql...）中的数据
+string constr = "server=.;database=myschool;integrated security=SSPI";
+SqlConnection con = new SqlConnection(constr);
+string sql = "select count(*) from grade";
+SqlCommand com = new SqlCommand(sql,con);
+try
+{
+    con.Open();
+    MessageBox.Show("成功连接数据库");
+    int x = (int)com.ExecuteScalar();
+    MessageBox.Show(string.Format("成功读取{0},条记录", x));
+}
+catch (Exception)
+{
+
+    throw;
+}
+finally
+{
+    con.Close();
+    MessageBox.Show("成功关闭数据库连接", "提示信息", MessageBoxButtons.YesNoCancel);
+}
