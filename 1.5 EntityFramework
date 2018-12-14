@@ -1,11 +1,33 @@
 
 1. 使用entityframeWork连接数据库
 1.1数据库上下文
-public class RetailContext : DbContext
+
+public class ApplicationDbContext: DbContext
 {
-   public RetailContext(): base("SqliteTest"){}     
-   public DbSet<Thumbnail> Thumbnails { set; get; }
+  public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+      : base(options)
+  {
+  }
+  public DbSet<MessageModel> MessageModel { set; get; }
+
 }
+
+ public class MysqlConnectionDao
+    {
+        private ApplicationDbContext _context { get; set; }
+        public List<MessageModel> GetMessage(string messagetype)
+        {
+            List<MessageModel> mlist = new List<MessageModel>();
+            var optionsBuilder1 = new DbContextOptionsBuilder<ApplicationDbContext>();
+            optionsBuilder1.UseMySql("server = ip; port = 3306; uid = root; pwd = root; database = aspnetmysql");
+            using (var context = new ApplicationDbContext(optionsBuilder1.Options))
+            {
+                mlist = context.MessageModel.Where(c => (c.MessageType == messagetype)).ToList();
+            }
+            return mlist;
+        }
+    }
+    
 1.2实体对象
 public class Thumbnail
 {
