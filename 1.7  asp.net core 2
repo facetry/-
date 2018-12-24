@@ -12,3 +12,15 @@ IOptions<Content> option，这个对象的东西就是容器
 Transient： 每一次访问都会创建一个新的实例
 Scoped： 在同一个Scope内只初始化一个实例 ，可以理解为（ 每一个request级别只创建一个实例，同一个http request会在一个 scope内）
 Singleton ：整个应用程序生命周期以内只创建一个实例
+
+2.Kestrel和IIS的区别在asp.net core中
+自托管web服务器Kestrel，Kestrel监听，响应，返回请求
+iis在ASP.NET CORE只是作为反向代理，将请求转发给Kestrel
+asp.net core对IIS无依赖
+如果你的应用只接收来自内部网络的请求，你可以只使用Kestrel本身。
+如果你将你的应用部署在公共网络上，我们建议你使用IIS作为反向代理服务器。
+一个反向代理服务器接收来自网络的HTTP请求并且在经过一些初步处理后将请求传递到Kestrel服务器。
+
+需要反向代理的场景是，你有多个需要在单独的服务器上运行并分享同一端口的应用。因为Kestrel不支持在多进程间分享同一端口，
+所以应用并不能直接和Kestrel合作。当你在某个端口上配置Kestrel运行侦听时，不算主机头如何标识，Kestrel会为该端口处理所有的流量。
+反向代理可以为多个应用共享唯一端口并将流量发送给Kestrel。
